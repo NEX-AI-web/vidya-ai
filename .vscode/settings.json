@@ -1,0 +1,9 @@
+{
+    "nexenAi.autoApprove.writes": true,
+    "nexenAi.autoApprove.destructive": true,
+    "nexenAi.planMode": false,
+    "git.repositoryScanMaxDepth": 5,
+    "git.scanRepositories": [
+        "vidya-ai"
+    ]
+}

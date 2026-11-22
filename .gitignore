@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.env
+.env.*.local
+!.env.example
+
+# Nexen — secrets and diagnostics
+.codebenders/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Nexen preview build output
+.next-nexen

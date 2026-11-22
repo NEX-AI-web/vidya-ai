@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Language {
+  english
+  telugu
+  hindi
+  tamil
+  kannada
+  malayalam
+  marathi
+  bengali
+  gujarati
+  punjabi
+  odia
+  urdu
+}
+
+enum UserRole {
+  student
+  parent
+  teacher
+  volunteer
+  administrator
+}
+
+model User {
+  id                String   @id @default(uuid()) @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  email             String   @unique
+  name              String
+  role              UserRole
+  externalId        String   @unique @map("external_id")
+  preferredLanguage Language @default(english) @map("preferred_language")
+  isActive          Boolean  @default(true) @map("is_active")
+  lastLoginAt       DateTime? @map("last_login_at")
+
+  @@map("users")
+}

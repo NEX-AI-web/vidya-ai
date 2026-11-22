@@ -4,7 +4,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import {
+  getFirebaseAuth,
+  getMissingFirebaseConfigKeys,
+  isFirebaseConfigured,
+} from "@/lib/firebase";
 
 interface Lesson {
   id: string;
@@ -339,7 +343,11 @@ export default function VidyaAIApp() {
     profiles.find((p) => p.id === selectedProfileId) || profiles[0];
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    if (!isFirebaseConfigured()) {
+      console.error("Firebase is not configured. Missing env vars: " + getMissingFirebaseConfigKeys().join(", "));
+      return undefined;
+    }
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (currentUser) => {
       setAuthUser(currentUser);
       setCheckingAuth(false);
 
@@ -374,7 +382,7 @@ export default function VidyaAIApp() {
     setIsSpeaking(false);
 
     try {
-      await signOut(auth);
+      await signOut(getFirebaseAuth());
       router.replace("/login");
     } catch (error) {
       console.error("Logout failed:", error);

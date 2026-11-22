@@ -13,9 +13,9 @@ import {
 } from "firebase/auth";
 
 import {
-  auth,
-  googleProvider,
-  authPersistence,
+  getFirebaseAuth,
+  getFirebaseAuthReady,
+  getGoogleProvider,
 } from "@/lib/firebase";
 
 type AuthMode = "login" | "signup";
@@ -53,10 +53,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await authPersistence;
+      await getFirebaseAuthReady();
 
       await signInWithEmailAndPassword(
-        auth,
+        getFirebaseAuth(),
         email.trim(),
         password
       );
@@ -104,10 +104,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await authPersistence;
+      await getFirebaseAuthReady();
 
       const result = await createUserWithEmailAndPassword(
-        auth,
+        getFirebaseAuth(),
         email.trim(),
         password
       );
@@ -147,9 +147,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await authPersistence;
+      await getFirebaseAuthReady();
 
-      await signInWithPopup(auth, googleProvider);
+      await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
 
       router.replace("/onboarding");
     } catch (err: any) {
@@ -179,7 +179,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await sendPasswordResetEmail(auth, email.trim());
+      await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
 
       setSuccess(
         "Password reset link sent. Please check your email."

@@ -4,7 +4,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import {
+  getFirebaseAuth,
+  getFirebaseDb,
+  isFirebaseConfigured,
+  getMissingFirebaseConfigKeys,
+} from "@/lib/firebase";
 import {
   collection,
   doc,
@@ -37,16 +42,24 @@ export default function ParentDashboard() {
   const [parentUid, setParentUid] = useState("");
 
   useEffect(() => {
+    if (!isFirebaseConfigured()) {
+      console.error(
+        "Firebase is not configured. Missing env vars: " +
+          getMissingFirebaseConfigKeys().join(", ")
+      );
+      return undefined;
+    }
+
     let unsubscribeStudents: (() => void) | undefined;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(getFirebaseAuth(), async (user) => {
       if (!user) {
         router.replace("/login");
         return;
       }
 
       try {
-        const profile = await getDoc(doc(db, "users", user.uid));
+        const profile = await getDoc(doc(getFirebaseDb(), "users", user.uid));
 
         if (!profile.exists() || profile.data().role !== "parent") {
           router.replace("/onboarding");
@@ -58,13 +71,13 @@ export default function ParentDashboard() {
         unsubscribeStudents?.();
 
         unsubscribeStudents = onSnapshot(
-          collection(db, "parents", user.uid, "students"),
+          collection(getFirebaseDb(), "parents", user.uid, "students"),
           async (links) => {
             try {
               const records = await Promise.all(
                 links.docs.map(async (link) => {
                   const snap = await getDoc(
-                    doc(db, "students", link.id)
+                    doc(getFirebaseDb(), "students", link.id)
                   );
 
                   if (!snap.exists()) return null;
@@ -118,7 +131,7 @@ export default function ParentDashboard() {
     setMessage("");
 
     try {
-      const codeRef = doc(db, "studentCodes", studentCode);
+      const codeRef = doc(getFirebaseDb(), "studentCodes", studentCode);
       const codeSnap = await getDoc(codeRef);
 
       if (!codeSnap.exists()) {
@@ -132,7 +145,7 @@ export default function ParentDashboard() {
       }
 
       const studentSnap = await getDoc(
-        doc(db, "students", studentUid)
+        doc(getFirebaseDb(), "students", studentUid)
       );
 
       if (!studentSnap.exists()) {
@@ -140,7 +153,7 @@ export default function ParentDashboard() {
       }
 
       await setDoc(
-        doc(db, "parents", parentUid, "students", studentUid),
+        doc(getFirebaseDb(), "parents", parentUid, "students", studentUid),
         {
           studentUid,
           studentCode,
@@ -162,7 +175,7 @@ export default function ParentDashboard() {
   }
 
   async function handleLogout() {
-    await signOut(auth);
+    await signOut(getFirebaseAuth());
     router.replace("/login");
   }
 

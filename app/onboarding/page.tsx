@@ -10,7 +10,12 @@ import {
   runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import {
+  getFirebaseAuth,
+  getFirebaseDb,
+  isFirebaseConfigured,
+  getMissingFirebaseConfigKeys,
+} from "@/lib/firebase";
 
 type Role = "student" | "parent" | "teacher";
 type ProfileStatus = "checking" | "ready" | "error";
@@ -100,7 +105,7 @@ export default function OnboardingPage() {
       setError("");
 
       try {
-        const userRef = doc(db, "users", currentUser.uid);
+        const userRef = doc(getFirebaseDb(), "users", currentUser.uid);
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
@@ -151,7 +156,15 @@ export default function OnboardingPage() {
 
   // Listen for Firebase authentication changes.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    if (!isFirebaseConfigured()) {
+      console.error(
+        "Firebase is not configured. Missing env vars: " +
+          getMissingFirebaseConfigKeys().join(", ")
+      );
+      return undefined;
+    }
+
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), async (currentUser) => {
       if (!currentUser) {
         setUser(null);
         router.replace("/login");
@@ -172,11 +185,11 @@ export default function OnboardingPage() {
     for (let attempt = 0; attempt < 20; attempt++) {
       const code = generateSixDigits();
 
-      const codeRef = doc(db, "studentCodes", code);
-      const studentRef = doc(db, "students", currentUser.uid);
-      const userRef = doc(db, "users", currentUser.uid);
+      const codeRef = doc(getFirebaseDb(), "studentCodes", code);
+      const studentRef = doc(getFirebaseDb(), "students", currentUser.uid);
+      const userRef = doc(getFirebaseDb(), "users", currentUser.uid);
 
-      const created = await runTransaction(db, async (transaction) => {
+      const created = await runTransaction(getFirebaseDb(), async (transaction) => {
         const existingCode = await transaction.get(codeRef);
 
         if (existingCode.exists()) {
@@ -235,11 +248,11 @@ export default function OnboardingPage() {
     for (let attempt = 0; attempt < 20; attempt++) {
       const code = `TCH-${generateSixDigits()}`;
 
-      const codeRef = doc(db, "teacherCodes", code);
-      const teacherRef = doc(db, "teachers", currentUser.uid);
-      const userRef = doc(db, "users", currentUser.uid);
+      const codeRef = doc(getFirebaseDb(), "teacherCodes", code);
+      const teacherRef = doc(getFirebaseDb(), "teachers", currentUser.uid);
+      const userRef = doc(getFirebaseDb(), "users", currentUser.uid);
 
-      const created = await runTransaction(db, async (transaction) => {
+      const created = await runTransaction(getFirebaseDb(), async (transaction) => {
         const existingCode = await transaction.get(codeRef);
 
         if (existingCode.exists()) {
@@ -293,11 +306,11 @@ export default function OnboardingPage() {
   const linkParentToStudent = async (currentUser: User) => {
     const normalizedCode = studentCode.trim();
 
-    const codeRef = doc(db, "studentCodes", normalizedCode);
-    const userRef = doc(db, "users", currentUser.uid);
+    const codeRef = doc(getFirebaseDb(), "studentCodes", normalizedCode);
+    const userRef = doc(getFirebaseDb(), "users", currentUser.uid);
 
     const linkedStudentUid = await runTransaction(
-      db,
+      getFirebaseDb(),
       async (transaction) => {
         // Read the code document before writing anything.
         const codeSnap = await transaction.get(codeRef);
@@ -315,7 +328,7 @@ export default function OnboardingPage() {
 
         // Use the actual student UID as the link document ID.
         const parentStudentRef = doc(
-          db,
+          getFirebaseDb(),
           "parents",
           currentUser.uid,
           "students",
@@ -444,7 +457,7 @@ export default function OnboardingPage() {
 
   const handleLogout = async () => {
     try {
-      await auth.signOut();
+      await getFirebaseAuth().signOut();
       router.replace("/login");
     } catch (err: any) {
       console.error("VIDYA AI LOGOUT ERROR:", err);

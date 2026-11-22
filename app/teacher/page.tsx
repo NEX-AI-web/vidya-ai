@@ -4,7 +4,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import {
+  getFirebaseAuth,
+  getFirebaseDb,
+  getFirebaseStorage,
+  isFirebaseConfigured,
+  getMissingFirebaseConfigKeys,
+} from "@/lib/firebase";
 
 import {
   collection,
@@ -18,7 +24,6 @@ import {
 } from "firebase/firestore";
 
 import {
-  getStorage,
   ref,
   uploadBytes,
   getDownloadURL,
@@ -47,16 +52,24 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isFirebaseConfigured()) {
+      console.error(
+        "Firebase is not configured. Missing env vars: " +
+          getMissingFirebaseConfigKeys().join(", ")
+      );
+      return undefined;
+    }
+
     let unsubscribeMaterials: (() => void) | undefined;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(getFirebaseAuth(), async (user) => {
       if (!user) {
         router.replace("/login");
         return;
       }
 
       try {
-        const profile = await getDoc(doc(db, "users", user.uid));
+        const profile = await getDoc(doc(getFirebaseDb(), "users", user.uid));
 
         if (!profile.exists() || profile.data().role !== "teacher") {
           router.replace("/onboarding");
@@ -68,7 +81,7 @@ export default function TeacherDashboard() {
         unsubscribeMaterials?.();
 
         const materialsQuery = query(
-          collection(db, "teachers", user.uid, "materials"),
+          collection(getFirebaseDb(), "teachers", user.uid, "materials"),
           orderBy("createdAt", "desc")
         );
 
@@ -104,7 +117,7 @@ export default function TeacherDashboard() {
   }, [router]);
 
   async function uploadMaterial() {
-    const user = auth.currentUser;
+    const user = getFirebaseAuth().currentUser;
 
     if (!user || !file || !title.trim()) {
       setMessage("Please enter a title and select a file.");
@@ -120,7 +133,7 @@ export default function TeacherDashboard() {
     setMessage("");
 
     try {
-      const storage = getStorage();
+      const storage = getFirebaseStorage();
 
       const safeName = file.name.replace(
         /[^a-zA-Z0-9._-]/g,
@@ -138,7 +151,7 @@ export default function TeacherDashboard() {
       const url = await getDownloadURL(storageRef);
 
       await addDoc(
-        collection(db, "teachers", user.uid, "materials"),
+        collection(getFirebaseDb(), "teachers", user.uid, "materials"),
         {
           title: title.trim(),
           type,
@@ -173,7 +186,7 @@ export default function TeacherDashboard() {
   }
 
   async function handleLogout() {
-    await signOut(auth);
+    await signOut(getFirebaseAuth());
     router.replace("/login");
   }
 

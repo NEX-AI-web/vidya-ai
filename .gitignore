@@ -13,3 +13,4 @@ node_modules/
 
 # Nexen preview build output
 .next-nexen
+.env.local
